@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>图书查询</h2>
+<form method="get" action="{{ url_for('search') }}" class="form-inline">
+    <input type="text" name="q" value="{{ keyword }}" placeholder="按书名 / 作者 / ISBN 模糊检索">
+    <button type="submit">搜索</button>
+</form>
+
+{% if keyword %}
+    <p>关键词 “{{ keyword }}” 的结果：</p>
+    <table>
+        <thead>
+            <tr><th>书名</th><th>作者</th><th>ISBN</th><th>分类</th><th>库存</th></tr>
+        </thead>
+        <tbody>
+        {% for b in books %}
+            <tr>
+                <td>{{ b.title }}</td>
+                <td>{{ b.author }}</td>
+                <td>{{ b.isbn }}</td>
+                <td>{{ b.category }}</td>
+                <td>{{ b.stock }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5">未找到匹配图书</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+{% endblock %}

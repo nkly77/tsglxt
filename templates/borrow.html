@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>借出登记</h2>
+<p>图书：<strong>{{ book.title }}</strong>（当前库存：{{ book.stock }}）</p>
+<form method="post" class="form">
+    <label>借阅人：<input type="text" name="borrower" required></label>
+    <button type="submit">确认借出</button>
+</form>
+{% endblock %}

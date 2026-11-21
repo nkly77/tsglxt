@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>借阅记录</h2>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th><th>图书</th><th>借阅人</th>
+            <th>借出时间</th><th>归还时间</th><th>状态</th><th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+        <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.book.title }}</td>
+            <td>{{ r.borrower }}</td>
+            <td>{{ r.borrow_time.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ r.return_time.strftime('%Y-%m-%d %H:%M') if r.return_time else '-' }}</td>
+            <td>{% if r.is_returned %}已归还{% else %}借出中{% endif %}</td>
+            <td>
+                {% if not r.is_returned %}
+                <form method="post" action="{{ url_for('return_book', record_id=r.id) }}" style="display:inline">
+                    <button type="submit" class="btn">归还</button>
+                </form>
+                {% else %}-{% endif %}
+            </td>
+        </tr>
+    {% else %}
+        <tr><td colspan="7">暂无借阅记录</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
