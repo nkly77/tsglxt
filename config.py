@@ -7,3 +7,5 @@ class Config:
     SECRET_KEY = "tsgkxt-secret-key-change-me"
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(BASE_DIR, "library.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+        # 借阅期限（天），超过即视为逾期
+    LOAN_DAYS = 30

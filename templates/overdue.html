@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>逾期统计</h2>
+
+<div class="stats">
+    <div class="stat-card"><span class="stat-num">{{ stats.total_borrowed }}</span><span>总借阅记录</span></div>
+    <div class="stat-card"><span class="stat-num">{{ stats.total_active }}</span><span>借出中</span></div>
+    <div class="stat-card stat-warn"><span class="stat-num">{{ stats.total_overdue }}</span><span>已逾期</span></div>
+    <div class="stat-card"><span class="stat-num">{{ stats.total_returned }}</span><span>已归还</span></div>
+</div>
+
+<p style="color:#888">借阅期限 {{ stats.loan_days }} 天，超过即视为逾期。下表按逾期天数降序排列。</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>记录ID</th><th>图书</th><th>借阅人</th>
+            <th>借出时间</th><th>已借天数</th><th>逾期天数</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in rows %}
+        {% set r = item.record %}
+        <tr class="row-overdue">
+            <td>{{ r.id }}</td>
+            <td>{{ r.book.title }}</td>
+            <td>{{ r.borrower }}</td>
+            <td>{{ r.borrow_time.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ item.elapsed }} 天</td>
+            <td><span class="badge-overdue">{{ item.overdue_days }} 天</span></td>
+        </tr>
+    {% else %}
+        <tr><td colspan="6">当前没有逾期记录 🎉</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

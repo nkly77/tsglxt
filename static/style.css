@@ -36,3 +36,22 @@ th { background: #ecf0f1; }
 .flash.error { background: #f8d7da; color: #721c24; }
 .btn-danger { background: #e74c3c; }
 .btn-danger:hover { background: #c0392b; }
+/* 逾期行高亮 */
+.row-overdue { background: #fff5f5; }
+.badge-overdue {
+    display: inline-block; background: #e74c3c; color: #fff;
+    padding: 2px 8px; border-radius: 10px; font-size: 12px;
+}
+/* 统计卡片 */
+.stats { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.stat-card {
+    flex: 1; min-width: 140px; background: #fff; border-radius: 6px;
+    padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+.stat-card .stat-num { display: block; font-size: 28px; font-weight: 700; color: #2c3e50; }
+.stat-card span:last-child { color: #888; font-size: 13px; }
+.stat-warn .stat-num { color: #e74c3c; }
+/* 下拉框样式 */
+.form-inline select {
+    padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; margin-right: 6px;
+}

@@ -103,8 +103,43 @@ def borrow_book(book_id):
 # ---------- 借阅记录 / 归还 ----------
 @app.route("/records")
 def records():
-    all_records = Borrow.query.order_by(Borrow.id.desc()).all()
-    return render_template("records.html", records=all_records)
+    # 查询条件：借阅人 / 书名 / 状态
+    borrower = request.args.get("borrower", "").strip()
+    book_title = request.args.get("book_title", "").strip()
+    status = request.args.get("status", "").strip()   # all / borrowed / returned / overdue
+
+    query = Borrow.query.join(Book, Borrow.book_id == Book.id)
+
+    if borrower:
+        query = query.filter(Borrow.borrower.like(f"%{borrower}%"))
+    if book_title:
+        query = query.filter(Book.title.like(f"%{book_title}%"))
+    if status == "borrowed":
+        query = query.filter(Borrow.is_returned.is_(False))
+    elif status == "returned":
+        query = query.filter(Borrow.is_returned.is_(True))
+
+    all_records = query.order_by(Borrow.id.desc()).all()
+
+    # 逾期判断：未归还 且 借出时间超过 LOAN_DAYS
+    now = datetime.now()
+    loan_days = app.config.get("LOAN_DAYS", 30)
+    rows = []
+    for r in all_records:
+        overdue_days = 0
+        if not r.is_returned:
+            elapsed = (now - r.borrow_time).days
+            if elapsed > loan_days:
+                overdue_days = elapsed - loan_days
+        rows.append({"record": r, "overdue_days": overdue_days})
+
+    # 若选择「逾期」状态，只保留逾期行
+    if status == "overdue":
+        rows = [x for x in rows if x["overdue_days"] > 0]
+
+    return render_template("records.html", rows=rows,
+                           borrower=borrower, book_title=book_title,
+                           status=status, loan_days=loan_days)
 
 
 @app.route("/return/<int:record_id>", methods=["POST"])
@@ -140,6 +175,43 @@ def delete_book(book_id):
     db.session.commit()
     flash(f"《{book.title}》已删除", "success")
     return redirect(url_for("index"))
+
+
+# ---------- 逾期统计 ----------
+@app.route("/overdue")
+def overdue():
+    now = datetime.now()
+    loan_days = app.config.get("LOAN_DAYS", 30)
+
+    # 所有未归还记录
+    active = Borrow.query.filter(Borrow.is_returned.is_(False)) \
+                         .order_by(Borrow.borrow_time.asc()).all()
+
+    rows = []
+    for r in active:
+        elapsed = (now - r.borrow_time).days
+        overdue_days = elapsed - loan_days
+        if overdue_days > 0:
+            rows.append({"record": r, "elapsed": elapsed, "overdue_days": overdue_days})
+
+    # 按逾期天数降序
+    rows.sort(key=lambda x: x["overdue_days"], reverse=True)
+
+    # 汇总统计
+    total_borrowed = Borrow.query.count()
+    total_active = len(active)
+    total_overdue = len(rows)
+    total_returned = Borrow.query.filter(Borrow.is_returned.is_(True)).count()
+
+    stats = {
+        "total_borrowed": total_borrowed,
+        "total_active": total_active,
+        "total_overdue": total_overdue,
+        "total_returned": total_returned,
+        "loan_days": loan_days,
+    }
+
+    return render_template("overdue.html", rows=rows, stats=stats)
 
 
 # ---------- 编辑图书 ----------

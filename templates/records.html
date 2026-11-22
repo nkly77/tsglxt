@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>借阅记录</h2>
+
+<form method="get" action="{{ url_for('records') }}" class="form-inline">
+    <input type="text" name="borrower" value="{{ borrower }}" placeholder="借阅人">
+    <input type="text" name="book_title" value="{{ book_title }}" placeholder="书名">
+    <select name="status">
+        <option value=""       {% if not status %}selected{% endif %}>全部</option>
+        <option value="borrowed" {% if status == 'borrowed' %}selected{% endif %}>借出中</option>
+        <option value="returned" {% if status == 'returned' %}selected{% endif %}>已归还</option>
+        <option value="overdue"  {% if status == 'overdue'  %}selected{% endif %}>已逾期</option>
+    </select>
+    <button type="submit">查询</button>
+    <a class="btn" href="{{ url_for('overdue') }}" style="background:#e67e22">逾期统计</a>
+</form>
+
 <table>
     <thead>
         <tr>
@@ -9,14 +23,20 @@
         </tr>
     </thead>
     <tbody>
-    {% for r in records %}
-        <tr>
+    {% for item in rows %}
+        {% set r = item.record %}
+        <tr class="{{ 'row-overdue' if item.overdue_days > 0 else '' }}">
             <td>{{ r.id }}</td>
             <td>{{ r.book.title }}</td>
             <td>{{ r.borrower }}</td>
             <td>{{ r.borrow_time.strftime('%Y-%m-%d %H:%M') }}</td>
             <td>{{ r.return_time.strftime('%Y-%m-%d %H:%M') if r.return_time else '-' }}</td>
-            <td>{% if r.is_returned %}已归还{% else %}借出中{% endif %}</td>
+            <td>
+                {% if r.is_returned %}已归还
+                {% elif item.overdue_days > 0 %}
+                    <span class="badge-overdue">逾期 {{ item.overdue_days }} 天</span>
+                {% else %}借出中{% endif %}
+            </td>
             <td>
                 {% if not r.is_returned %}
                 <form method="post" action="{{ url_for('return_book', record_id=r.id) }}" style="display:inline">
@@ -26,8 +46,9 @@
             </td>
         </tr>
     {% else %}
-        <tr><td colspan="7">暂无借阅记录</td></tr>
+        <tr><td colspan="7">暂无符合条件的借阅记录</td></tr>
     {% endfor %}
     </tbody>
 </table>
+<p style="margin-top:10px;color:#888">借阅期限：{{ loan_days }} 天，超过即标记逾期。</p>
 {% endblock %}
