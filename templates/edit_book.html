@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>编辑图书</h2>
+<form method="post" class="form">
+    <label>书名：<input type="text" name="title" value="{{ book.title }}" required></label>
+    <label>作者：<input type="text" name="author" value="{{ book.author }}" required></label>
+    <label>ISBN：<input type="text" name="isbn" value="{{ book.isbn }}" required></label>
+    <label>分类：<input type="text" name="category" value="{{ book.category }}" required></label>
+    <label>库存数量：<input type="number" name="stock" min="0" value="{{ book.stock }}" required></label>
+    <button type="submit">保存修改</button>
+    <a class="btn" href="{{ url_for('index') }}" style="background:#95a5a6">取消</a>
+</form>
+{% endblock %}

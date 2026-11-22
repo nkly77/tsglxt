@@ -142,6 +142,49 @@ def delete_book(book_id):
     return redirect(url_for("index"))
 
 
+# ---------- 编辑图书 ----------
+@app.route("/edit/<int:book_id>", methods=["GET", "POST"])
+def edit_book(book_id):
+    book = Book.query.get_or_404(book_id)
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        author = request.form.get("author", "").strip()
+        isbn = request.form.get("isbn", "").strip()
+        category = request.form.get("category", "").strip()
+        stock_raw = request.form.get("stock", "0").strip()
+
+        # 基础校验
+        if not title or not author or not isbn or not category:
+            flash("所有字段均为必填项", "error")
+            return redirect(url_for("edit_book", book_id=book_id))
+
+        try:
+            stock = int(stock_raw)
+            if stock < 0:
+                raise ValueError
+        except ValueError:
+            flash("库存数量必须为非负整数", "error")
+            return redirect(url_for("edit_book", book_id=book_id))
+
+        # 不可与其他图书的 ISBN 重复（排除自身）
+        exist = Book.query.filter(Book.isbn == isbn, Book.id != book.id).first()
+        if exist:
+            flash(f"ISBN {isbn} 已被《{exist.title}》使用，不可重复", "error")
+            return redirect(url_for("edit_book", book_id=book_id))
+
+        book.title = title
+        book.author = author
+        book.isbn = isbn
+        book.category = category
+        book.stock = stock
+        db.session.commit()
+        flash(f"《{title}》修改成功", "success")
+        return redirect(url_for("index"))
+
+    return render_template("edit_book.html", book=book)
+
+
 # ---------- 初始化数据库 ----------
 with app.app_context():
     db.create_all()
