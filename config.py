@@ -9,3 +9,6 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
         # 借阅期限（天），超过即视为逾期
     LOAN_DAYS = 30
+        # 批量导入上传目录
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+    ALLOWED_EXTENSIONS = {"csv", "xlsx"}

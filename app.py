@@ -1,6 +1,10 @@
 # app.py - 主入口与路由
+import os
+import csv
+import io
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
+from werkzeug.utils import secure_filename
 
 from config import Config
 from database import db
@@ -156,6 +160,123 @@ def return_book(record_id):
     db.session.commit()
     flash(f"《{record.book.title}》已归还", "success")
     return redirect(url_for("records"))
+
+
+# ---------- 批量导入：工具函数 ----------
+def allowed_file(filename):
+    return ("." in filename and
+            filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"])
+
+
+def parse_csv(file_stream):
+    """解析 CSV，返回 [dict]，字段：title/author/isbn/category/stock"""
+    text = file_stream.read().decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+    rows = []
+    for row in reader:
+        rows.append({
+            "title": (row.get("书名") or row.get("title") or "").strip(),
+            "author": (row.get("作者") or row.get("author") or "").strip(),
+            "isbn": (row.get("ISBN") or row.get("isbn") or "").strip(),
+            "category": (row.get("分类") or row.get("category") or "").strip(),
+            "stock": (row.get("库存") or row.get("stock") or "0").strip(),
+        })
+    return rows
+
+
+def parse_xlsx(file_stream):
+    """解析 Excel(.xlsx)，第一行为表头，返回 [dict]"""
+    from openpyxl import load_workbook
+    wb = load_workbook(file_stream, read_only=True, data_only=True)
+    ws = wb.active
+    it = ws.iter_rows(values_only=True)
+    header = [str(c).strip() if c is not None else "" for c in next(it)]
+    # 中文/英文表头映射
+    idx = {}
+    mapping = {
+        "title": ["书名", "title"], "author": ["作者", "author"],
+        "isbn": ["ISBN", "isbn"], "category": ["分类", "category"],
+        "stock": ["库存", "stock"],
+    }
+    for key, names in mapping.items():
+        for n in names:
+            if n in header:
+                idx[key] = header.index(n)
+                break
+    rows = []
+    for raw in it:
+        if raw is None or all(c is None for c in raw):
+            continue
+        def get(k):
+            i = idx.get(k)
+            if i is None or i >= len(raw) or raw[i] is None:
+                return ""
+            return str(raw[i]).strip()
+        rows.append({
+            "title": get("title"), "author": get("author"),
+            "isbn": get("isbn"), "category": get("category"),
+            "stock": get("stock") or "0",
+        })
+    wb.close()
+    return rows
+
+
+# ---------- 批量导入 ----------
+@app.route("/import", methods=["GET", "POST"])
+def import_books():
+    if request.method == "POST":
+        file = request.files.get("file")
+        if not file or file.filename == "":
+            flash("请选择要上传的文件", "error")
+            return redirect(url_for("import_books"))
+        if not allowed_file(file.filename):
+            flash("仅支持 .csv 或 .xlsx 文件", "error")
+            return redirect(url_for("import_books"))
+
+        filename = secure_filename(file.filename)
+        # 防止 secure_filename 将纯中文文件名过滤为空字符串导致报错
+        if not filename:
+            filename = file.filename  
+        
+        # 安全获取后缀名
+        ext = os.path.splitext(filename)[1].lower().lstrip(".")
+        try:
+            rows = parse_csv(file.stream) if ext == "csv" else parse_xlsx(file.stream)
+        except Exception as e:
+            flash(f"文件解析失败：{e}", "error")
+            return redirect(url_for("import_books"))
+
+        success, skipped, errors = 0, 0, []
+        for i, row in enumerate(rows, start=2):  # 从第2行算起（含表头）
+            title, author = row["title"], row["author"]
+            isbn, category = row["isbn"], row["category"]
+            if not (title and author and isbn and category):
+                errors.append(f"第{i}行：字段不完整，已跳过")
+                skipped += 1
+                continue
+            try:
+                stock = int(row["stock"])
+                if stock < 0:
+                    raise ValueError
+            except ValueError:
+                errors.append(f"第{i}行：库存非法（{row['stock']}），已跳过")
+                skipped += 1
+                continue
+            if Book.query.filter_by(isbn=isbn).first():
+                errors.append(f"第{i}行：ISBN {isbn} 已存在，已跳过")
+                skipped += 1
+                continue
+            db.session.add(Book(title=title, author=author, isbn=isbn,
+                                category=category, stock=stock))
+            success += 1
+
+        db.session.commit()
+        flash(f"导入完成：成功 {success} 条，跳过 {skipped} 条", "success")
+        if errors:
+            flash("；".join(errors[:10]) + ("……" if len(errors) > 10 else ""), "error")
+        return redirect(url_for("index"))
+
+    return render_template("import_books.html")
 
 
 # ---------- 删除图书 ----------

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>批量导入图书</h2>
+
+<div class="notice">
+    <p>支持 <strong>.csv</strong> 和 <strong>.xlsx</strong> 文件。</p>
+    <p>表头需包含（中英文均可）：<code>书名 / 作者 / ISBN / 分类 / 库存</code></p>
+    <p>示例（CSV）：</p>
+    <pre>书名,作者,ISBN,分类,库存
+Python编程,张三,978-7-111-00001-1,计算机,5
+数据结构,李四,978-7-111-00002-8,计算机,3</pre>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="form">
+    <label>选择文件：<input type="file" name="file" accept=".csv,.xlsx" required></label>
+    <button type="submit">开始导入</button>
+    <a class="btn" href="{{ url_for('index') }}" style="background:#95a5a6">返回</a>
+</form>
+
+<p style="color:#888;margin-top:12px">
+    说明：ISBN 重复、字段缺失、库存非法的行会被自动跳过并提示，其余正常入库。
+</p>
+{% endblock %}
